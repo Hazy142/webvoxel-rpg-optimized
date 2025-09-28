@@ -4,6 +4,8 @@ import { useGameStore, usePerformanceStore } from '../game/store';
 import { ChunkManager } from '../game/world/ChunkManager';
 import { ErrorBoundary } from './ErrorBoundary';
 
+
+
 interface SceneProps {
   width?: number;
   height?: number;
@@ -26,6 +28,9 @@ const Scene: React.FC<SceneProps> = ({ width = 800, height = 600 }) => {
     cleanup: () => void;
   } | null>(null);
 
+
+
+  
   const { gameState, playerPosition, setPlayerPosition } = useGameStore();
   const { setFPS, setMemoryUsage, setChunkCount } = usePerformanceStore();
 
@@ -155,7 +160,9 @@ const Scene: React.FC<SceneProps> = ({ width = 800, height = 600 }) => {
 
       // Kamera
       const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-      camera.position.set(0, 50, 0);
+      // ✅ NEUE POSITION - schaue direkt auf das generierte Terrain:
+      camera.position.set(0, 40, 40); // x, y, z
+      camera.lookAt(0, 8, 0); // Blicke auf die Mitte des Terrains
 
       // Renderer mit optimierten Einstellungen
       const renderer = new THREE.WebGLRenderer({ 

@@ -314,6 +314,7 @@ export class ChunkManager {
     mesh.receiveShadow = false;
     
     return mesh;
+    mesh.frustumCulled = false; // DEBUG – Sicherheitsmaßnahme
   }
   
   public updateChunks(playerPosition: THREE.Vector3): void {
