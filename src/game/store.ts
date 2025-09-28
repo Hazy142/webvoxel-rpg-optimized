@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { GameStore, InventoryItem } from '../types/game';
-import { BlockType } from '../types/game'; // ✅ Normaler Import, nicht "import type"!
+import { BlockType } from '../types/game-types-optimized'; // ✅ Normaler Import, nicht "import type"!
 
 // Performance Store Interface
 interface PerformanceStore {
