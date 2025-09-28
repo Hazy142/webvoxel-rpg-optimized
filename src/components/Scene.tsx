@@ -1,292 +1,634 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+/* import React, { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
-import { useGameStore, usePerformanceStore } from '../game/store';
 import { ChunkManager } from '../game/world/ChunkManager';
-import { ErrorBoundary } from './ErrorBoundary';
+import { InputManager } from '../game/systems/InputManager';
+import { AudioManager } from '../game/systems/AudioManager';
+import { useGameStore, usePerformanceStore } from '../game/store';
+import { BlockType } from '../types/game';
 
-
-
-interface SceneProps {
-  width?: number;
-  height?: number;
+interface SceneRef {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  chunkManager: ChunkManager;
+  inputManager: InputManager;
+  audioManager: AudioManager;
+  animationId?: number;
 }
 
-const Scene: React.FC<SceneProps> = ({ width = 800, height = 600 }) => {
+const Scene: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<{
-    scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
-    renderer: THREE.WebGLRenderer;
-    chunkManager: ChunkManager;
-    animationId?: number;
-    controls: {
-      forward: boolean;
-      backward: boolean;
-      left: boolean;
-      right: boolean;
-    };
-    cleanup: () => void;
-  } | null>(null);
-
-
-
+  const sceneRef = useRef<SceneRef | null>(null);
   
-  const { gameState, playerPosition, setPlayerPosition } = useGameStore();
-  const { setFPS, setMemoryUsage, setChunkCount } = usePerformanceStore();
+  // ✅ HOOKS AN DER RICHTIGEN STELLE:
+  const { 
+    gameState, 
+    playerPosition, 
+    setPlayerPosition, 
+    selectedBlockType,
+    dayTime,
+    setDayTime,
+    isMouseLocked,
+    setMouseLocked
+  } = useGameStore();
 
-  // Performance-Monitoring
-  const performanceRef = useRef({
-    lastTime: 0,
-    frameCount: 0,
-    fpsUpdateInterval: 1000, // 1 Sekunde
-  });
+  const { setFps, setFrameTime, setMemory, setChunks } = usePerformanceStore();
 
-  const updatePerformanceMetrics = useCallback(() => {
-    const now = performance.now();
-    const perf = performanceRef.current;
-    perf.frameCount++;
+  // Player movement state
+  const playerVelocity = useRef(new THREE.Vector3());
+  const isOnGround = useRef(false);
+  const lastStepTime = useRef(0);
 
-    if (now - perf.lastTime >= perf.fpsUpdateInterval) {
-      const fps = Math.round((perf.frameCount * 1000) / (now - perf.lastTime));
-      setFPS(fps);
+  const initializeScene = useCallback(() => {
+    if (!mountRef.current) return;
 
-      // Memory-Usage (approximiert)
-      if ('memory' in performance) {
-        const memInfo = (performance as any).memory;
-        const memoryMB = Math.round(memInfo.usedJSHeapSize / (1024 * 1024));
-        setMemoryUsage(memoryMB);
-      }
+    const mount = mountRef.current;
+    const width = mount.clientWidth;
+    const height = mount.clientHeight;
 
-      // Chunk-Count
-      if (sceneRef.current?.chunkManager) {
-        setChunkCount(sceneRef.current.chunkManager.getVisibleChunkCount());
-      }
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+    scene.fog = new THREE.Fog(0x87CEEB, 100, 300);
 
-      perf.frameCount = 0;
-      perf.lastTime = now;
-    }
-  }, [setFPS, setMemoryUsage, setChunkCount]);
+    // Enhanced lighting with day/night cycle
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(50, 100, 50);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 500;
+    scene.add(directionalLight);
+
+    // Camera setup (FPS-style)
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+    camera.position.set(playerPosition.x, playerPosition.y, playerPosition.z);
+
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Enhanced canvas setup
+    const canvas = renderer.domElement;
+    canvas.style.display = 'block';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    mount.appendChild(canvas);
+
+    // Initialize systems
+    const chunkManager = new ChunkManager(scene, camera);
+    const inputManager = new InputManager();
+    const audioManager = new AudioManager();
+
+    // Crosshair
+    const crosshairGeometry = new THREE.RingGeometry(0.02, 0.03, 8);
+    const crosshairMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffffff, 
+      transparent: true, 
+      opacity: 0.8 
+    });
+    const crosshair = new THREE.Mesh(crosshairGeometry, crosshairMaterial);
+    crosshair.position.set(0, 0, -1);
+    camera.add(crosshair);
+    scene.add(camera);
+
+    sceneRef.current = {
+      scene,
+      camera,
+      renderer,
+      chunkManager,
+      inputManager,
+      audioManager,
+    };
+
+    console.log('🎮 Enhanced Scene erfolgreich initialisiert');
+  }, [playerPosition]);
+
+  const updateDayNightCycle = useCallback(() => {
     if (!sceneRef.current) return;
 
-    const controls = sceneRef.current.controls;
-    switch (event.code) {
-      case 'KeyW': controls.forward = true; break;
-      case 'KeyS': controls.backward = true; break;
-      case 'KeyA': controls.left = true; break;
-      case 'KeyD': controls.right = true; break;
+    const { scene } = sceneRef.current;
+    
+    // Update day time
+    const newDayTime = (dayTime + 0.0001) % 1;
+    setDayTime(newDayTime);
+
+    // Calculate lighting based on day time
+    const sunAngle = newDayTime * Math.PI * 2;
+    const lightIntensity = Math.max(0.2, Math.sin(sunAngle));
+    
+    // Update ambient light
+    const ambientLight = scene.children.find(child => child instanceof THREE.AmbientLight) as THREE.AmbientLight;
+    if (ambientLight) {
+      ambientLight.intensity = lightIntensity * 0.6;
     }
-  }, []);
 
-  const handleKeyUp = useCallback((event: KeyboardEvent) => {
-    if (!sceneRef.current) return;
-
-    const controls = sceneRef.current.controls;
-    switch (event.code) {
-      case 'KeyW': controls.forward = false; break;
-      case 'KeyS': controls.backward = false; break;
-      case 'KeyA': controls.left = false; break;
-      case 'KeyD': controls.right = false; break;
-    }
-  }, []);
-
-  const animate = useCallback(() => {
-    if (!sceneRef.current || gameState === 'paused') {
-      if (sceneRef.current) {
-        sceneRef.current.animationId = requestAnimationFrame(animate);
+    // Update directional light
+    const directionalLight = scene.children.find(child => child instanceof THREE.DirectionalLight) as THREE.DirectionalLight;
+    if (directionalLight) {
+      directionalLight.intensity = lightIntensity;
+      directionalLight.position.x = Math.cos(sunAngle) * 100;
+      directionalLight.position.y = Math.sin(sunAngle) * 100;
+      
+      // Change light color based on time
+      if (lightIntensity < 0.3) {
+        directionalLight.color.setHex(0x4169E1); // Night blue
+      } else if (lightIntensity < 0.7) {
+        directionalLight.color.setHex(0xFFA500); // Sunset orange
+      } else {
+        directionalLight.color.setHex(0xFFFFFF); // Day white
       }
-      return;
     }
 
-    const { scene, camera, renderer, chunkManager, controls } = sceneRef.current;
+    // Update sky color
+    const skyColorIntensity = Math.max(0.1, lightIntensity);
+    scene.background = new THREE.Color(
+      0.53 * skyColorIntensity,
+      0.81 * skyColorIntensity,
+      0.92 * skyColorIntensity
+    );
+  }, [dayTime, setDayTime]);
 
-    // Bewegung berechnen
-    const moveSpeed = 0.5;
+  const handlePlayerMovement = useCallback((deltaTime: number) => {
+    if (!sceneRef.current || gameState === 'paused') return;
+
+    const { camera, chunkManager, inputManager, audioManager } = sceneRef.current;
+    const controls = inputManager.getControls();
+    const mouseControls = inputManager.getMouseControls();
+
+    // Apply mouse look
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = mouseControls.yaw;
+    camera.rotation.x = mouseControls.pitch;
+
+    // Movement
+    const moveSpeed = controls.sprint ? 20 : 10;
+    const jumpForce = 15;
+    const gravity = -30;
+
+    // Get movement direction based on camera rotation
     const direction = new THREE.Vector3();
+    const forward = new THREE.Vector3(0, 0, -1);
+    const right = new THREE.Vector3(1, 0, 0);
+    
+    forward.applyQuaternion(camera.quaternion);
+    right.applyQuaternion(camera.quaternion);
+    
+    forward.y = 0;
+    right.y = 0;
+    forward.normalize();
+    right.normalize();
 
-    if (controls.forward) direction.z -= 1;
-    if (controls.backward) direction.z += 1;
-    if (controls.left) direction.x -= 1;
-    if (controls.right) direction.x += 1;
+    // Calculate movement vector
+    if (controls.forward) direction.add(forward);
+    if (controls.backward) direction.sub(forward);
+    if (controls.left) direction.sub(right);
+    if (controls.right) direction.add(right);
 
-    if (direction.length() > 0) {
-      direction.normalize();
-      direction.multiplyScalar(moveSpeed);
+    direction.normalize();
+    direction.multiplyScalar(moveSpeed * deltaTime);
 
-      // Kamera-relative Bewegung
-      const cameraDirection = new THREE.Vector3();
-      camera.getWorldDirection(cameraDirection);
-      cameraDirection.y = 0;
-      cameraDirection.normalize();
+    // Apply gravity
+    playerVelocity.current.y += gravity * deltaTime;
 
-      const cameraRight = new THREE.Vector3();
-      cameraRight.crossVectors(camera.up, cameraDirection);
-
-      const movement = new THREE.Vector3();
-      movement.addScaledVector(cameraDirection, -direction.z);
-      movement.addScaledVector(cameraRight, direction.x);
-
-      camera.position.add(movement);
-
-      // Position aktualisieren
-      setPlayerPosition({
-        x: camera.position.x,
-        y: camera.position.y,
-        z: camera.position.z,
-      });
+    // Jump
+    if (controls.jump && isOnGround.current) {
+      playerVelocity.current.y = jumpForce;
+      isOnGround.current = false;
+      audioManager.playSound('jump', 0.3);
     }
 
-    // Chunks aktualisieren
+    // Apply movement
+    const newPosition = camera.position.clone();
+    newPosition.add(direction);
+    newPosition.y += playerVelocity.current.y * deltaTime;
+
+    // Simple ground collision (Y = 50 for now)
+    if (newPosition.y <= 50) {
+      newPosition.y = 50;
+      playerVelocity.current.y = 0;
+      isOnGround.current = true;
+    }
+
+    // Update camera position
+    camera.position.copy(newPosition);
+    
+    // Update chunks
     chunkManager.updateChunks(camera.position);
 
-    // Performance-Metriken
-    updatePerformanceMetrics();
+    // Update player position in store
+    setPlayerPosition({
+      x: camera.position.x,
+      y: camera.position.y,
+      z: camera.position.z
+    });
 
-    // Rendern
-    renderer.render(scene, camera);
+    // Play step sounds
+    if ((controls.forward || controls.backward || controls.left || controls.right) && 
+        isOnGround.current && Date.now() - lastStepTime.current > 400) {
+      audioManager.playSound('step', 0.2);
+      lastStepTime.current = Date.now();
+    }
 
-    sceneRef.current.animationId = requestAnimationFrame(animate);
-  }, [gameState, setPlayerPosition, updatePerformanceMetrics]);
-
-  useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
-
-    try {
-      // Scene Setup
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x87CEEB); // Sky Blue
-
-      // ✅ VERSTÄRKTES LICHT:
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Heller
-      scene.add(ambientLight);
-
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Heller
-      directionalLight.position.set(50, 100, 50);
-      directionalLight.castShadow = false; // Performance
-      scene.add(directionalLight);
-
-      // ✅ KORRIGIERTE KAMERA für dein Chunk-Layout:
-      const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-      camera.position.set(0, 20, 70); // Niedriger und auf Terrain-Mitte
-      camera.lookAt(0, 8, 40); // Schaue auf Terrain-Zentrum
-
-      // ✅ DEBUG-MARKER:
-      const marker = new THREE.Mesh(
-        new THREE.SphereGeometry(2, 8, 6),
-        new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    // Handle block interaction
+    if (controls.place || controls.destroy) {
+      const raycastResult = chunkManager.raycast(
+        camera.position,
+        forward,
+        6
       );
-      marker.position.set(0, 15, 40); // Terrain-Mitte markieren
-      scene.add(marker);
 
-            const renderer = new THREE.WebGLRenderer({
-              antialias: true,
-              powerPreference: 'high-performance',
-            });
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = false;
-      
-            // ✅ EXPLICIT CANVAS SETUP
-            const canvas = renderer.domElement;
-            canvas.style.display = 'block';
-            canvas.style.position = 'absolute';
-            canvas.style.top = '0';
-            canvas.style.left = '0';
-            canvas.style.zIndex = '1';
-            canvas.style.width = '100%';
-            canvas.style.height = '100%';
-            mount.appendChild(canvas);
-      
-            console.log('🎨 Canvas mounted:', canvas.clientWidth, 'x', canvas.clientHeight);
-      // Chunk Manager
-      const chunkManager = new ChunkManager(scene, camera);
-
-      // Controls
-      const controls = {
-        forward: false,
-        backward: false,
-        left: false,
-        right: false,
-      };
-
-      // Cleanup-Funktion
-      const cleanup = () => {
-        // Animation stoppen
-        if (sceneRef.current?.animationId) {
-          cancelAnimationFrame(sceneRef.current.animationId);
+      if (raycastResult.hit && raycastResult.position) {
+        if (controls.place) {
+          const placePosition = raycastResult.position.clone();
+          if (raycastResult.normal) {
+            placePosition.add(raycastResult.normal.multiplyScalar(2));
+          }
+          
+          if (chunkManager.placeBlock(placePosition, selectedBlockType)) {
+            audioManager.playSound('place', 0.4);
+          }
         }
 
-        // Event-Listener entfernen
-        window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('keyup', handleKeyUp);
+        if (controls.destroy) {
+          if (chunkManager.removeBlock(raycastResult.position)) {
+            audioManager.playSound('break', 0.4);
+          }
+        }
+      }
+    }
+  }, [gameState, selectedBlockType, setPlayerPosition]);
 
-        // Resources aufräumen
-        chunkManager.dispose();
+  // ✅ KORREKTE ANIMATE-FUNKTION:
+  const animate = useCallback(() => {
+    if (!sceneRef.current) return;
+
+    const { scene, camera, renderer, chunkManager } = sceneRef.current;
+    
+    // Performance tracking
+    const currentTime = performance.now();
+    const deltaTime = Math.min((currentTime - (sceneRef.current as any).lastTime || 0) / 1000, 0.1);
+    (sceneRef.current as any).lastTime = currentTime;
+
+    // FPS calculation
+    (sceneRef.current as any).frameCount = ((sceneRef.current as any).frameCount || 0) + 1;
+    if (!((sceneRef.current as any).lastFpsUpdate)) {
+      (sceneRef.current as any).lastFpsUpdate = currentTime;
+    }
+
+    // Update Performance Store every second
+    if (currentTime - (sceneRef.current as any).lastFpsUpdate >= 1000) {
+      const fps = Math.round(((sceneRef.current as any).frameCount * 1000) / (currentTime - (sceneRef.current as any).lastFpsUpdate));
+      const frameTimeMs = deltaTime * 1000;
+      const memory = (performance as any).memory 
+        ? Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024)
+        : Math.round(Math.random() * 20 + 15);
+      const chunks = chunkManager.getChunkCount();
+
+      // Update performance store
+      setFps(fps);
+      setFrameTime(Math.round(frameTimeMs * 10) / 10);
+      setMemory(memory);
+      setChunks(chunks);
+
+      (sceneRef.current as any).frameCount = 0;
+      (sceneRef.current as any).lastFpsUpdate = currentTime;
+    }
+
+    // Update systems
+    updateDayNightCycle();
+    handlePlayerMovement(deltaTime);
+
+    // Render
+    renderer.render(scene, camera);
+    
+    sceneRef.current.animationId = requestAnimationFrame(animate);
+  }, [updateDayNightCycle, handlePlayerMovement, setFps, setFrameTime, setMemory, setChunks]);
+
+  const handleResize = useCallback(() => {
+    if (!sceneRef.current || !mountRef.current) return;
+
+    const { camera, renderer } = sceneRef.current;
+    const width = mountRef.current.clientWidth;
+    const height = mountRef.current.clientHeight;
+
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+  }, []);
+
+  // Pointer lock handling
+  useEffect(() => {
+    const handlePointerLockChange = () => {
+      setMouseLocked(!!document.pointerLockElement);
+    };
+
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
+    return () => {
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
+    };
+  }, [setMouseLocked]);
+
+  useEffect(() => {
+    initializeScene();
+    
+    window.addEventListener('resize', handleResize);
+    
+    const animationId = requestAnimationFrame(animate);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      
+      if (sceneRef.current) {
+        if (sceneRef.current.animationId) {
+          cancelAnimationFrame(sceneRef.current.animationId);
+        }
+        
+        sceneRef.current.chunkManager.dispose();
+        sceneRef.current.inputManager.dispose();
+        sceneRef.current.audioManager.dispose();
+        sceneRef.current.renderer.dispose();
+        
+        if (mountRef.current?.contains(sceneRef.current.renderer.domElement)) {
+          mountRef.current.removeChild(sceneRef.current.renderer.domElement);
+        }
+      }
+      
+      console.log('🎮 Enhanced Scene cleanup abgeschlossen');
+    };
+  }, [initializeScene, handleResize, animate]);
+
+  return (
+    <div 
+      ref={mountRef} 
+      style={{ 
+        width: '100%', 
+        height: '100%',
+        cursor: isMouseLocked ? 'none' : 'pointer'
+      }} 
+    />
+  );
+};
+
+export default Scene;
+*/
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+import { useGameStore } from '../game/store';
+
+const Scene: React.FC = () => {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const { gameState, setGameState, isMouseLocked, setMouseLocked } = useGameStore();
+
+  useEffect(() => {
+    if (!mountRef.current) return;
+
+    let mounted = true;
+    const mount = mountRef.current;
+    let renderer: THREE.WebGLRenderer;
+    let animationId: number;
+    
+    // ✅ MOVEMENT STATE
+    const movement = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+    };
+
+    // ✅ MOUSE LOOK STATE (aus dem alten Code!)
+    const mouseControls = {
+      sensitivity: 0.002,
+      pitch: 0,
+      yaw: 0,
+    };
+
+    // ✅ KEYBOARD HANDLERS
+    const onKeyDown = (event: KeyboardEvent) => {
+      switch (event.code) {
+        case 'KeyW': movement.forward = true; break;
+        case 'KeyS': movement.backward = true; break;
+        case 'KeyA': movement.left = true; break;
+        case 'KeyD': movement.right = true; break;
+        case 'Space': movement.up = true; event.preventDefault(); break;
+        case 'ShiftLeft': movement.down = true; break;
+      }
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      switch (event.code) {
+        case 'KeyW': movement.forward = false; break;
+        case 'KeyS': movement.backward = false; break;
+        case 'KeyA': movement.left = false; break;
+        case 'KeyD': movement.right = false; break;
+        case 'Space': movement.up = false; break;
+        case 'ShiftLeft': movement.down = false; break;
+      }
+    };
+
+    // ✅ MOUSE HANDLERS (aus dem alten Code!)
+    const onMouseMove = (event: MouseEvent) => {
+      if (document.pointerLockElement === mount) {
+        mouseControls.yaw -= event.movementX * mouseControls.sensitivity;
+        mouseControls.pitch -= event.movementY * mouseControls.sensitivity;
+        mouseControls.pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, mouseControls.pitch));
+      }
+    };
+
+    const onClick = () => {
+      if (!document.pointerLockElement) {
+        mount.requestPointerLock();
+      }
+    };
+
+    // ✅ POINTER LOCK HANDLER
+    const onPointerLockChange = () => {
+      setMouseLocked(!!document.pointerLockElement);
+    };
+
+    try {
+      // Scene setup
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87CEEB);
+
+      const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000);
+      camera.position.set(0, 10, 30);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: false });
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+      mount.appendChild(renderer.domElement);
+
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(10, 10, 5);
+      scene.add(directionalLight);
+
+      // ✅ TEST CUBES
+      const geometry = new THREE.BoxGeometry(10, 10, 10);
+      
+      // Green cube at center
+      const centerCube = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: 0x00ff00 }));
+      centerCube.position.set(0, 0, 0);
+      scene.add(centerCube);
+
+      // Red cube to the right
+      const rightCube = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: 0xff0000 }));
+      rightCube.position.set(30, 0, 0);
+      scene.add(rightCube);
+
+      // Blue cube behind
+      const backCube = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: 0x0000ff }));
+      backCube.position.set(0, 0, -30);
+      scene.add(backCube);
+
+      // Yellow cube above
+      const topCube = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: 0xffff00 }));
+      topCube.position.set(0, 30, 0);
+      scene.add(topCube);
+
+      // Ground reference
+      const groundGeometry = new THREE.PlaneGeometry(200, 200);
+      const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -15;
+      scene.add(ground);
+
+      // ✅ CROSSHAIR (aus dem alten Code!)
+      const crosshairGeometry = new THREE.RingGeometry(0.05, 0.07, 8);
+      const crosshairMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff, 
+        transparent: true, 
+        opacity: 0.8 
+      });
+      const crosshair = new THREE.Mesh(crosshairGeometry, crosshairMaterial);
+      crosshair.position.set(0, 0, -1);
+      camera.add(crosshair);
+      scene.add(camera);
+
+      // ✅ MOVEMENT VARIABLES
+      const moveSpeed = 20;
+      let lastTime = performance.now();
+
+      // ✅ RENDER LOOP WITH MOUSE LOOK
+      function animate(currentTime: number) {
+        if (!mounted) return;
+        
+        const deltaTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+        
+        // ✅ APPLY MOUSE LOOK (aus dem alten Code!)
+        camera.rotation.order = 'YXZ';
+        camera.rotation.y = mouseControls.yaw;
+        camera.rotation.x = mouseControls.pitch;
+        
+        // ✅ MOVEMENT BASIERT AUF KAMERA-RICHTUNG
+        const velocity = new THREE.Vector3();
+        
+        // Get camera direction vectors
+        const forward = new THREE.Vector3(0, 0, -1);
+        const right = new THREE.Vector3(1, 0, 0);
+        
+        forward.applyQuaternion(camera.quaternion);
+        right.applyQuaternion(camera.quaternion);
+        
+        // Keep movement horizontal (no flying up/down with mouse look)
+        forward.y = 0;
+        right.y = 0;
+        forward.normalize();
+        right.normalize();
+        
+        if (movement.forward) velocity.add(forward.multiplyScalar(moveSpeed * deltaTime));
+        if (movement.backward) velocity.add(forward.multiplyScalar(-moveSpeed * deltaTime));
+        if (movement.left) velocity.add(right.multiplyScalar(-moveSpeed * deltaTime));
+        if (movement.right) velocity.add(right.multiplyScalar(moveSpeed * deltaTime));
+        if (movement.up) velocity.y += moveSpeed * deltaTime;
+        if (movement.down) velocity.y -= moveSpeed * deltaTime;
+        
+        // Apply movement to camera
+        camera.position.add(velocity);
+        
+        // Rotate cubes for visual feedback
+        centerCube.rotation.x += 0.01;
+        centerCube.rotation.y += 0.01;
+        rightCube.rotation.x += 0.005;
+        backCube.rotation.z += 0.008;
+        topCube.rotation.y += 0.012;
+        
+        renderer.render(scene, camera);
+        animationId = requestAnimationFrame(animate);
+      }
+      
+      // ✅ ADD ALL EVENT LISTENERS
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keyup', onKeyUp);
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('pointerlockchange', onPointerLockChange);
+      mount.addEventListener('click', onClick);
+      
+      animate(performance.now());
+      setGameState('running');
+      console.log('✅ FPS Scene with Mouse Look started');
+      console.log('👆 Click to enable mouse look!');
+
+    } catch (error) {
+      console.error('❌ WebGL failed:', error);
+      setGameState('error');
+    }
+
+    return () => {
+      mounted = false;
+      
+      // ✅ CLEANUP ALL EVENT LISTENERS
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
+      mount.removeEventListener('click', onClick);
+      
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      
+      if (renderer) {
         renderer.dispose();
-
-        // DOM-Element entfernen
         if (mount.contains(renderer.domElement)) {
           mount.removeChild(renderer.domElement);
         }
-
-        console.log('Scene cleanup abgeschlossen');
-      };
-
-      sceneRef.current = {
-        scene,
-        camera,
-        renderer,
-        chunkManager,
-        controls,
-        cleanup,
-      };
-
-      // Event-Listener
-      window.addEventListener('keydown', handleKeyDown);
-      window.addEventListener('keyup', handleKeyUp);
-
-      // Animation starten
-      sceneRef.current.animationId = requestAnimationFrame(animate);
-
-      console.log('Scene erfolgreich initialisiert');
-    } catch (error) {
-      console.error('Fehler beim Initialisieren der Scene:', error);
-    }
-
-    // Cleanup bei Unmount
-    return () => {
-      if (sceneRef.current?.cleanup) {
-        sceneRef.current.cleanup();
       }
+      
+      console.log('🧹 FPS Scene cleanup');
     };
-  }, [width, height, handleKeyDown, handleKeyUp, animate]);
+  }, [setGameState, setMouseLocked]);
 
-  // Resize-Handling
-  useEffect(() => {
-    if (!sceneRef.current) return;
-
-    const { camera, renderer } = sceneRef.current;
-
-    const handleResize = () => {
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [width, height]);
-
-  return <div ref={mountRef} className="scene-container" />;
+  return (
+    <div 
+      ref={mountRef} 
+      style={{ 
+        width: '100%', 
+        height: '100%',
+        background: '#000',
+        cursor: isMouseLocked ? 'none' : 'pointer'
+      }} 
+    />
+  );
 };
 
-// Scene mit Error Boundary wrappen
-const SceneWithErrorBoundary: React.FC<SceneProps> = (props) => (
-  <ErrorBoundary>
-    <Scene {...props} />
-  </ErrorBoundary>
-);
-
-export default SceneWithErrorBoundary;
+export default Scene;

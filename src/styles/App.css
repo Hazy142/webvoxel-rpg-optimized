@@ -1,16 +1,4 @@
-:root {
-  --color-primary: #4a90e2;
-  --color-secondary: #50c878;
-  --color-danger: #e74c3c;
-  --color-warning: #f39c12;
-  --color-dark: #2c3e50;
-  --color-light: #ecf0f1;
-  --color-bg: #1a1a1a;
-  --color-surface: #2d2d2d;
-  --color-text: #ffffff;
-  --color-text-muted: #bdc3c7;
-}
-
+/* Base Styles */
 * {
   margin: 0;
   padding: 0;
@@ -19,209 +7,67 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background: #000;
+  color: #fff;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.app {
+#root {
   width: 100vw;
   height: 100vh;
   position: relative;
+}
+
+/* App Container */
+.app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .game-container {
   width: 100%;
   height: 100%;
   position: relative;
-}
-
-.scene-container {
-  width: 100%;
-  height: 100%;
-  cursor: grab;
-}
-
-/* Performance Monitor */
-.performance-monitor {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 8px;
-  padding: 16px;
-  min-width: 200px;
-  z-index: 100;
-}
-
-.performance-header h3 {
-  margin: 0 0 12px 0;
-  color: var(--color-text);
-  font-size: 16px;
-}
-
-.performance-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.metric {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-}
-
-.metric-label {
-  color: var(--color-text-muted);
-}
-
-.metric-value {
-  font-weight: bold;
-  font-family: 'Courier New', monospace;
-}
-
-.performance-good .metric-value {
-  color: var(--color-secondary);
-}
-
-.performance-ok .metric-value {
-  color: var(--color-warning);
-}
-
-.performance-poor .metric-value {
-  color: var(--color-danger);
-}
-
-/* Game UI */
-.game-ui {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 8px;
-  padding: 16px;
-  min-width: 250px;
-  z-index: 100;
-}
-
-.game-controls {
-  margin-bottom: 16px;
-}
-
-.player-info {
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.info-label {
-  color: var(--color-text-muted);
-}
-
-.info-value {
-  font-weight: bold;
-  font-family: 'Courier New', monospace;
-}
-
-.status-running {
-  color: var(--color-secondary);
-}
-
-.status-paused {
-  color: var(--color-warning);
-}
-
-.status-loading {
-  color: var(--color-primary);
-}
-
-.controls-help h4 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: var(--color-text-muted);
-}
-
-.controls-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  font-size: 12px;
-}
-
-/* Buttons */
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  outline: none;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.btn--primary {
-  background-color: var(--color-primary);
-  color: white;
-}
-
-.btn--secondary {
-  background-color: var(--color-secondary);
-  color: white;
-}
-
-.btn--danger {
-  background-color: var(--color-danger);
-  color: white;
+  overflow: hidden;
 }
 
 /* Loading Screen */
-.loading-screen, .error-screen {
+.loading-screen {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: var(--color-bg);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
 
-.loading-content, .error-content {
+.loading-content {
   text-align: center;
-  padding: 40px;
+  color: white;
 }
 
-.loading-content h1, .error-content h1 {
-  font-size: 48px;
-  margin-bottom: 32px;
-  color: var(--color-primary);
+.loading-content h1 {
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
 
 .loading-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid var(--color-surface);
-  border-top: 4px solid var(--color-primary);
+  border: 5px solid rgba(255,255,255,0.3);
+  border-top: 5px solid #fff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 20px auto;
+  margin: 0 auto 1rem;
 }
 
 @keyframes spin {
@@ -229,14 +75,14 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Error Boundary */
-.error-boundary {
+/* Error Screen */
+.error-screen {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: var(--color-bg);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -244,102 +90,358 @@ body {
 }
 
 .error-content {
-  background: var(--color-surface);
-  padding: 40px;
-  border-radius: 8px;
-  max-width: 600px;
-  margin: 20px;
+  text-align: center;
+  color: white;
+  max-width: 500px;
+  padding: 2rem;
 }
 
-.error-content h2 {
-  color: var(--color-danger);
-  margin-bottom: 20px;
+.error-content h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
 }
 
-.error-message {
-  background: rgba(231, 76, 60, 0.1);
-  border: 1px solid var(--color-danger);
-  border-radius: 4px;
-  padding: 16px;
-  margin: 16px 0;
+/* Game UI */
+.game-ui {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
 }
 
-.error-details {
-  margin: 16px 0;
+.game-ui > * {
+  pointer-events: auto;
 }
 
-.error-details summary {
-  cursor: pointer;
-  padding: 8px;
-  background: var(--color-surface);
-  border-radius: 4px;
-}
-
-.error-details pre {
-  background: var(--color-dark);
-  padding: 16px;
-  border-radius: 4px;
-  overflow-x: auto;
+/* Performance Monitor */
+.performance-monitor {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 5px;
+  font-family: monospace;
   font-size: 12px;
-  margin-top: 8px;
+  min-width: 150px;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.error-actions {
+.performance-monitor div {
+  margin: 2px 0;
+}
+
+.fps-good { color: #4CAF50; }
+.fps-warning { color: #FF9800; }
+.fps-bad { color: #F44336; }
+
+/* Status Bar */
+.status-bar {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-item {
+  margin: 2px 0;
+  white-space: nowrap;
+}
+
+/* Controls Hint */
+.controls-hint {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 400px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.controls-hint h3 {
+  margin-bottom: 15px;
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+.controls-grid div {
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.click-hint {
+  text-align: center;
+  color: #ffeb3b;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Crosshair */
+.crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.crosshair-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.crosshair-horizontal {
+  width: 20px;
+  height: 2px;
+  top: -1px;
+  left: -10px;
+}
+
+.crosshair-vertical {
+  width: 2px;
+  height: 20px;
+  top: -10px;
+  left: -1px;
+}
+
+/* Hotbar */
+.hotbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 10px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hotbar-slot {
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hotbar-slot:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.05);
+}
+
+.hotbar-slot.selected {
+  border-color: #ffeb3b;
+  box-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+}
+
+.block-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.item-count {
+  font-size: 10px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.slot-number {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: bold;
+}
+
+/* Pause Menu */
+.pause-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+.pause-menu {
+  background: rgba(0, 0, 0, 0.9);
+  padding: 40px;
+  border-radius: 15px;
+  text-align: center;
+  min-width: 400px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pause-menu h2 {
+  margin-bottom: 30px;
+  font-size: 2rem;
+  color: #fff;
+}
+
+.pause-stats {
+  margin-bottom: 30px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.pause-stats p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.pause-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+/* Game Controls */
+.game-controls {
+  position: fixed;
+  top: 50px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn--secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn--small {
+  padding: 8px 12px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .performance-monitor,
-  .game-ui {
-    position: static;
-    margin: 10px;
-    border-radius: 0;
+  .controls-hint {
+    bottom: 100px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
   }
-
-  .app {
-    flex-direction: column;
+  
+  .performance-monitor {
+    font-size: 10px;
+    padding: 8px;
   }
-
-  .scene-container {
-    height: calc(100vh - 200px);
+  
+  .hotbar {
+    bottom: 10px;
+    scale: 0.8;
+  }
+  
+  .pause-menu {
+    margin: 20px;
+    min-width: auto;
+    width: calc(100% - 40px);
+    padding: 30px 20px;
   }
 }
 
-/* Utility Classes */
-.hidden {
-  display: none !important;
-}
-
-.text-center {
-  text-align: center;
-}
-
-.text-muted {
-  color: var(--color-text-muted);
-}
-
-.mb-2 {
-  margin-bottom: 8px;
-}
-
-.mb-4 {
-  margin-bottom: 16px;
-}
-
-#root {
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
+/* Canvas Specific */
 canvas {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
-  background: #ff0000; /* Temporär rot für Debug */
+  outline: none;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
