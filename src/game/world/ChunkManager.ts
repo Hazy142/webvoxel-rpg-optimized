@@ -29,10 +29,9 @@ export class ChunkManager {
     this.camera = camera;
     
     // Optimiertes Material erstellen
-    this.chunkMaterial = new THREE.MeshLambertMaterial({
-      color: 0x4a8b3b,
-      vertexColors: false,
-      side: THREE.FrontSide,
+    this.chunkMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00, // Knallgrün für Sichtbarkeit
+      side: THREE.DoubleSide,
     });
     
     this.initializeWorkers();
@@ -309,12 +308,11 @@ export class ChunkManager {
     
     const geometry = new THREE.BufferGeometry();
     const mesh = new THREE.Mesh(geometry, this.chunkMaterial);
-    mesh.frustumCulled = true;
+    mesh.frustumCulled = false; // Culling deaktivieren
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     
     return mesh;
-    mesh.frustumCulled = false; // DEBUG – Sicherheitsmaßnahme
   }
   
   public updateChunks(playerPosition: THREE.Vector3): void {

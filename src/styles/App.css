@@ -328,3 +328,18 @@ body {
 .mb-4 {
   margin-bottom: 16px;
 }
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #ff0000; /* Temporär rot für Debug */
+}

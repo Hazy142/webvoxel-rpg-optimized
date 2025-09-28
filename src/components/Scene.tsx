@@ -158,31 +158,48 @@ const Scene: React.FC<SceneProps> = ({ width = 800, height = 600 }) => {
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87CEEB); // Sky Blue
 
-      // Kamera
-      const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-      // ✅ NEUE POSITION - schaue direkt auf das generierte Terrain:
-      camera.position.set(0, 40, 40); // x, y, z
-      camera.lookAt(0, 8, 0); // Blicke auf die Mitte des Terrains
-
-      // Renderer mit optimierten Einstellungen
-      const renderer = new THREE.WebGLRenderer({ 
-        antialias: true,
-        powerPreference: 'high-performance',
-      });
-      renderer.setSize(width, height);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = false; // Für bessere Performance deaktiviert
-      mount.appendChild(renderer.domElement);
-
-      // Beleuchtung
-      const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+      // ✅ VERSTÄRKTES LICHT:
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Heller
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Heller
       directionalLight.position.set(50, 100, 50);
       directionalLight.castShadow = false; // Performance
       scene.add(directionalLight);
 
+      // ✅ KORRIGIERTE KAMERA für dein Chunk-Layout:
+      const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+      camera.position.set(0, 20, 70); // Niedriger und auf Terrain-Mitte
+      camera.lookAt(0, 8, 40); // Schaue auf Terrain-Zentrum
+
+      // ✅ DEBUG-MARKER:
+      const marker = new THREE.Mesh(
+        new THREE.SphereGeometry(2, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xff0000 })
+      );
+      marker.position.set(0, 15, 40); // Terrain-Mitte markieren
+      scene.add(marker);
+
+            const renderer = new THREE.WebGLRenderer({
+              antialias: true,
+              powerPreference: 'high-performance',
+            });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = false;
+      
+            // ✅ EXPLICIT CANVAS SETUP
+            const canvas = renderer.domElement;
+            canvas.style.display = 'block';
+            canvas.style.position = 'absolute';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.zIndex = '1';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            mount.appendChild(canvas);
+      
+            console.log('🎨 Canvas mounted:', canvas.clientWidth, 'x', canvas.clientHeight);
       // Chunk Manager
       const chunkManager = new ChunkManager(scene, camera);
 
