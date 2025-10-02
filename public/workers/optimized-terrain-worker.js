@@ -73,7 +73,7 @@ function addTopFace(positions, normals, uvs, colors, indices, x, y, z, color, ve
   );
 
   // Normals for 6 vertices (2 triangles)
-  for (let j = 0; j < 6; j++) {
+  for (let j = 0; j < 4; j++) {
     normals.push(0, 1, 0);
   }
 }
@@ -101,7 +101,7 @@ function addBottomFace(positions, normals, uvs, colors, indices, x, y, z, color,
     vertexIndex, vertexIndex + 2, vertexIndex + 3
   );
 
-  for (let j = 0; j < 6; j++) {
+  for (let j = 0; j < 4; j++) {
     normals.push(0, -1, 0);
   }
 }
@@ -129,7 +129,7 @@ function addFrontFace(positions, normals, uvs, colors, indices, x, y, z, color, 
     vertexIndex, vertexIndex + 2, vertexIndex + 3
   );
 
-  for (let j = 0; j < 6; j++) {
+  for (let j = 0; j < 4; j++) {
     normals.push(0, 0, -1);
   }
 }
@@ -157,7 +157,7 @@ function addBackFace(positions, normals, uvs, colors, indices, x, y, z, color, v
     vertexIndex, vertexIndex + 2, vertexIndex + 3
   );
 
-  for (let j = 0; j < 6; j++) {
+  for (let j = 0; j < 4; j++) {
     normals.push(0, 0, 1);
   }
 }
@@ -185,7 +185,7 @@ function addRightFace(positions, normals, uvs, colors, indices, x, y, z, color, 
     vertexIndex, vertexIndex + 2, vertexIndex + 3
   );
 
-  for (let j = 0; j < 6; j++) {
+  for (let j = 0; j < 4; j++) {
     normals.push(1, 0, 0);
   }
 }
@@ -213,7 +213,7 @@ function addLeftFace(positions, normals, uvs, colors, indices, x, y, z, color, v
     vertexIndex, vertexIndex + 2, vertexIndex + 3
   );
 
-  for (let j = 0; j < 6; j++) {
+  for (let j = 0; j < 4; j++) {
     normals.push(-1, 0, 0);
   }
 }

@@ -20,7 +20,7 @@
   },
   "include": [
     "src/**/*"
-  ],
+, "public/workers/optimized-terrain-worker.js"  ],
   "exclude": [
     "node_modules",
     "dist"
