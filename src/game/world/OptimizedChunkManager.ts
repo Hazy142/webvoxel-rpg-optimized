@@ -171,7 +171,7 @@ export class OptimizedChunkManager {
       `;
 
       const blob = new Blob([workerCode], { type: 'application/javascript' });
-      const worker = new Worker(URL.createObjectURL(blob));
+      const worker = new Worker('workers/optimized-terrain-worker.js');
 
       worker.onmessage = (e) => this.handleWorkerMessage(worker, e);
       worker.onerror = (error) => this.handleWorkerError(worker, error);
@@ -237,6 +237,9 @@ export class OptimizedChunkManager {
       geometry.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
       geometry.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
       geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
+      
+      // ADD THIS LINE:
+      geometry.computeBoundingBox();
 
       const material = this.materials.get(BlockType.GRASS)!;
       chunk.mesh = new THREE.Mesh(geometry, material);
@@ -265,7 +268,12 @@ export class OptimizedChunkManager {
     if (!chunk || !chunk.mesh || this.isDisposed) return;
 
     try {
-      // Update existing mesh geometry
+      // Update voxel data if provided
+      if (meshData.voxelData) {
+        chunk.voxels = meshData.voxelData;
+      }
+
+      // Update existing mesh geometry IN-PLACE
       const geometry = chunk.mesh.geometry as THREE.BufferGeometry;
 
       geometry.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
@@ -273,6 +281,8 @@ export class OptimizedChunkManager {
       geometry.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
       geometry.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
       geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
+
+      geometry.computeBoundingBox();
 
       geometry.attributes.position.needsUpdate = true;
       geometry.attributes.normal.needsUpdate = true;
@@ -429,16 +439,17 @@ export class OptimizedChunkManager {
     try {
       const worker = await this.getAvailableWorker();
 
+      // Send a copy of the buffer, don't transfer ownership
       worker.postMessage({
         type: 'regenerate',
         chunkX: chunk.x,
         chunkZ: chunk.z,
-        voxelData: chunk.voxels,
+        voxelData: chunk.voxels.slice(), // Send a copy
         chunkSize: this.CHUNK_SIZE
-      }, [chunk.voxels.buffer]); // Use transferable objects
+      });
 
-      // Create new voxel data since we transferred the buffer
-      chunk.voxels = new Uint8Array(chunk.voxels.length);
+      // Do NOT replace chunk.voxels here!
+      // Wait for worker to return updated voxelData in handleChunkRegenerated
     } catch (error) {
       console.error('❌ Error regenerating chunk mesh:', error);
       chunk.needsRemesh = false;
@@ -563,10 +574,18 @@ export class OptimizedChunkManager {
       if (chunk.mesh && chunk.isGenerated) {
         const wasVisible = chunk.isVisible;
 
-        // ✅ Frustum culling check
-        chunk.isVisible = this.frustum.intersectsBox(
-          chunk.mesh.geometry.boundingBox || new THREE.Box3()
-        );
+        // Get the local bounding box
+        let boundingBox = chunk.mesh.geometry.boundingBox;
+        if (!boundingBox) {
+          chunk.mesh.geometry.computeBoundingBox();
+          boundingBox = chunk.mesh.geometry.boundingBox;
+        }
+
+        // Transform bounding box to world space
+        const worldBoundingBox = boundingBox!.clone().applyMatrix4(chunk.mesh.matrixWorld);
+
+        // Frustum culling check in world space
+        chunk.isVisible = this.frustum.intersectsBox(worldBoundingBox);
 
         chunk.mesh.visible = chunk.isVisible;
 
